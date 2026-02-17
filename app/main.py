@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
 from .database import Base, engine, SessionLocal
 from .schemas import StudentCreate, AttendanceRequest, AttendanceLogListResponse
 from .crud import find_best_match, create_student
@@ -30,6 +31,15 @@ def get_db():
 
 @app.post("/students/create")
 def register_student(data: StudentCreate, db: Session = Depends(get_db)):
+    existing_match = find_best_match(db, data.face_vector, threshold=0.97)
+
+    if existing_match:
+        student = existing_match
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Khuôn mặt này đã được đăng ký cho võ sinh: {student.name}"
+        )
+    
     student = create_student(db, data)
     return {
         "status": 201,
@@ -44,12 +54,25 @@ def register_student(data: StudentCreate, db: Session = Depends(get_db)):
 @app.post("/students/attendance")
 def check_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
 
-    result = find_best_match(db, data.face_vector)
+    result = find_best_match(db, data.face_vector, threshold=0.97)
 
     if result is None:
         raise HTTPException(status_code=404, detail="No match found")
 
     student, score = result
+
+    time_threshold = datetime.utcnow() - timedelta(minutes=2)
+    last_log = db.query(AttendanceLog).filter(
+        AttendanceLog.student_id == student.id,
+    ).first()
+
+    if last_log:
+        return {
+            "status": 202,
+            "message": "Điểm danh 1 lần thôi",
+            "data": {"name": student.name, "already_logged": True}
+        }
+    
 
     new_log = AttendanceLog(student_id=student.id)
     db.add(new_log)
