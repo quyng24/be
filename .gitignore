@@ -1,0 +1,18 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Môi trường ảo
+venv/
+env/
+
+# Biến môi trường (Bảo mật!)
+.env
+
+# IDE rác
+.vscode/
+.idea/
+
+# Database tạm (nếu dùng SQLite)
+*.sqlite3
