@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.spatial.distance import cosine
 
 def cosine_similarity(a, b):
     a=np.array(a)
