@@ -5,7 +5,7 @@ from datetime import date, datetime
 class StudentCreate(BaseModel):
     name: str
     birthday: date
-    face_vector: List[float]
+    face_vector: List[List[float]]
 
 class AttendanceRequest(BaseModel):
     face_vector: List[float]

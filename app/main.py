@@ -1,3 +1,4 @@
+import numpy as np
 from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -31,23 +32,45 @@ def get_db():
 
 @app.post("/students/create")
 def register_student(data: StudentCreate, db: Session = Depends(get_db)):
-    existing_match = find_best_match(db, data.face_vector, threshold=0.97)
-
-    if existing_match:
-        student = existing_match
+    vectors_array = np.array(data.face_vector)
+    if vectors_array.shape != (5, 128):
         raise HTTPException(
             status_code=400, 
-            detail=f"Khuôn mặt này đã được đăng ký cho võ sinh: {student.name}"
+            detail="Cần cung cấp đủ 5 mẫu khuôn mặt để đăng ký."
         )
     
-    student = create_student(db, data)
+    mean_vector = np.mean(vectors_array, axis=0).tolist()
+    
+    existing_match = find_best_match(db, np.array(mean_vector), threshold=0.97)
+
+    if existing_match:
+        student, score = existing_match
+        return {
+            "status": 400,
+            "message": f"Khuôn mặt này đã được đăng ký (Khớp {score*100:.2f}%) cho võ sinh: {student.name}",
+        }
+    
+    new_student = Student(
+        name=data.name,
+        birthday=data.birthday,
+        face_vector=mean_vector
+    )
+    
+    try:
+        db.add(new_student)
+        db.commit()
+        db.refresh(new_student)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Lỗi khi lưu dữ liệu vào cơ sở dữ liệu.")
+
     return {
         "status": 201,
         "message": "+ 1 Võ sinh",
         "data": {
-            "id": student.id,
-            "name": student.name,
-            "birthday": student.birthday
+            "id": new_student.id,
+            "name": new_student.name,
+            "birthday": new_student.birthday
         }
     }
 
