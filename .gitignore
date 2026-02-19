@@ -16,3 +16,5 @@ env/
 
 # Database tạm (nếu dùng SQLite)
 *.sqlite3
+
+firebase-service-account.json

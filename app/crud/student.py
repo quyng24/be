@@ -1,19 +1,8 @@
 from sqlalchemy.orm import Session
-from .models import Student
-from .utils import cosine_similarity, get_cosine_similarity
+from app.models.student import Student
+from app.utils import get_cosine_similarity
 import numpy as np
-from typing import List, Tuple, Optional
-
-def create_student(db: Session, data):
-    student=Student(
-        name=data.name,
-        birthday=data.birthday,
-        face_vector=data.face_vector
-    )
-    db.add(student)
-    db.commit()
-    db.refresh(student)
-    return student
+from typing import Tuple, Optional
 
 def find_best_match(db: Session, new_vector: np.ndarray, threshold=0.6) -> Optional[Tuple[Student, float]]:
     students = db.query(Student).all()
@@ -24,7 +13,6 @@ def find_best_match(db: Session, new_vector: np.ndarray, threshold=0.6) -> Optio
 
     for stu in students:
         stu_v = np.array(stu.face_vector) 
-        # So sánh vector mới với vector đại diện trong DB
         score = get_cosine_similarity(new_vector, stu_v)
 
         if score > best_score:

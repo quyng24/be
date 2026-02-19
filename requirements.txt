@@ -6,3 +6,6 @@ python-dotenv
 pydantic
 numpy
 pytz
+firebase-admin 
+python-jose
+pydantic-settings
