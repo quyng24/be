@@ -37,7 +37,7 @@ async def login(data: TokenRequest, response: Response) -> dict:
         key="session",
         value=session_token,
         httponly=True,
-        secure=False,
+        secure=True,
         samesite="lax",
         max_age=settings.SESSION_EXPIRE_MINUTES * 60,
     )
@@ -58,7 +58,7 @@ def logout(response: Response):
     response.delete_cookie(
         key="session",
         httponly=True,
-        secure=True,
+        secure=False,
         samesite="lax",
     )
     return {
