@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import api_router
-from app.core.firebase import init_firebase
 
 app = FastAPI()
 
@@ -19,11 +18,5 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def startup_event() -> None:
-    init_firebase()
-
 
 app.include_router(api_router)
