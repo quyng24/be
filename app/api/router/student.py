@@ -12,21 +12,21 @@ router = APIRouter(prefix="/students", tags=["Students"])
 
 @router.post("/create")
 def register_student(data: StudentCreate, db: Session = Depends(get_db)):
-    vectors_array = np.array(data.face_vector)
-    if vectors_array.shape != (5, 128):
+    vectors_array = np.array(data.face_vectors)
+    if vectors_array.shape != (10, 128):
         raise HTTPException(
             status_code=400, 
-            detail="Cần cung cấp đủ 5 mẫu khuôn mặt để đăng ký."
+            detail="Cần cung cấp đủ 10 mẫu khuôn mặt để đăng ký."
         )
     
     mean_vector = np.mean(vectors_array, axis=0).tolist()
     
-    existing_match = find_best_match(db, np.array(mean_vector), threshold=0.97)
+    existing_match = find_best_match(db, np.array(mean_vector), threshold=0.95)
 
     if existing_match:
         student, score = existing_match
         return {
-            "status": 401,
+            "status": 409,
             "message": f"Khuôn mặt này đã được đăng ký (Khớp {score*100:.2f}%) cho võ sinh: {student.name}",
         }
     

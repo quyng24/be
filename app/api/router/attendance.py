@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from datetime import date
+from sqlalchemy import func
 from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_db
 from app.crud import find_best_match
@@ -12,40 +12,48 @@ from app.schemas.attendance import AttendanceLogListResponse, AttendanceRequest
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
 
-@router.post("/main")
+@router.post("/check-in")
 def check_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
 
-    result = find_best_match(db, data.face_vector, threshold=0.97)
+    result = find_best_match(db, data.face_vector, threshold=0.95)
 
     if result is None:
-        raise HTTPException(status_code=404, detail="No match found")
+        return {
+            "status": 404,
+            "message": "Không nhận diện được khuôn mặt. Vui lòng thử lại hoặc đăng ký mới!",
+            "data": None
+        }
 
     student, score = result
 
-    time_threshold = datetime.utcnow() - timedelta(minutes=2)
+    today = date.today()
     last_log = db.query(AttendanceLog).filter(
         AttendanceLog.student_id == student.id,
+        func.date(AttendanceLog.checkin_time) == today 
     ).first()
 
     if last_log:
         return {
             "status": 202,
-            "message": "Điểm danh 1 lần thôi",
-            "data": {"name": student.name, "already_logged": True}
+            "message": f"Võ sinh {student.name} đã điểm danh hôm nay rồi.",
+            "data": {"id": student.id, "name": student.name}
         }
-    
 
     new_log = AttendanceLog(student_id=student.id)
-    db.add(new_log)
-    db.commit()
+    try:
+        db.add(new_log)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Lỗi lưu dữ liệu.")
 
     return {
         "status": 200,
-        "message": "Điểm danh thành công! Xin chào",
+        "message": f"Điểm danh thành công! Xin chào {student.name}",
         "data": {
             "id": student.id,
             "name": student.name,
-            "similarity": score
+            "similarity": float(score)
         }
     }
 

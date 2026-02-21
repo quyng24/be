@@ -5,4 +5,4 @@ from datetime import date
 class StudentCreate(BaseModel):
     name: str
     birthday: date
-    face_vector: List[List[float]]
+    face_vectors: List[List[float]]
