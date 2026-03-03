@@ -1,10 +1,10 @@
 from pydantic import BaseModel, ConfigDict, field_serializer
-from typing import List
+from typing import Dict, List
 from datetime import date, datetime
 import pytz
 
 class AttendanceRequest(BaseModel):
-    face_vector: List[float]
+    face_vectors: List[List[float]]
 
 class AttendanceLogResponse(BaseModel):
     id: int
@@ -27,3 +27,13 @@ class AttendanceLogListResponse(BaseModel):
     page: int
     page_size: int
     data: list[AttendanceLogResponse]
+
+class WeeklyAttendanceRow(BaseModel):
+    student_id: int
+    name: str
+    weeks: Dict[str, int]
+    total_attended: int
+
+class MonthlyAttendanceResponse(BaseModel):
+    total_weeks: int
+    data: List[WeeklyAttendanceRow]

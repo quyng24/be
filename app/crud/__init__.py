@@ -1,1 +1,1 @@
-from .student import find_best_match
+from .student import find_best_match_attendance, find_duplicate_student

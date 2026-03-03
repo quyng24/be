@@ -18,3 +18,12 @@ def get_cosine_similarity(v1, v2):
         return 0.0
         
     return dot_product / (norm_v1 * norm_v2)
+
+def get_week_of_moth(dt):
+    return (dt.day - 1) // 7 + 1
+
+def normalize_vector(v: np.ndarray) -> np.ndarray:
+    norm = np.linalg.norm(v)
+    if norm == 0:
+        return v
+    return v / norm

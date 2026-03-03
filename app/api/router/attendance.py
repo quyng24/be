@@ -1,13 +1,16 @@
+import numpy as np
 from datetime import date
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.api.deps import get_db
-from app.crud import find_best_match
-from app.models.attendance import AttendanceLog
-from app.models.student import Student
-from app.schemas.attendance import AttendanceLogListResponse, AttendanceRequest
+from app.crud import find_best_match_attendance
+from app.utils import normalize_vector
+from app.models import AttendanceLog, Student
+from app.schemas import AttendanceLogListResponse, AttendanceRequest, MonthlyAttendanceResponse
+from app.service import get_monthly_attendance, get_week_of_moth
+
 
 router = APIRouter(prefix="/attendance", tags=["Attendance"])
 
@@ -15,21 +18,38 @@ router = APIRouter(prefix="/attendance", tags=["Attendance"])
 @router.post("/check-in")
 def check_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
 
-    result = find_best_match(db, data.face_vector, threshold=0.95)
+    vectors_array = np.array(data.face_vectors)
+
+    if len(vectors_array) < 3 or vectors_array.shape[1] != 128:
+        raise HTTPException(
+            status_code=400,
+            detail="Vector không hợp lệ."
+        )
+
+    normalized_vectors = [
+        normalize_vector(v) for v in vectors_array
+    ]
+
+    result = find_best_match_attendance(
+        db,
+        normalized_vectors,
+        threshold=0.85
+    )
 
     if result is None:
         return {
             "status": 404,
-            "message": "Không nhận diện được khuôn mặt. Vui lòng thử lại hoặc đăng ký mới!",
+            "message": "Không nhận diện được khuôn mặt. Vui lòng thử lại!",
             "data": None
         }
 
     student, score = result
 
     today = date.today()
+
     last_log = db.query(AttendanceLog).filter(
         AttendanceLog.student_id == student.id,
-        func.date(AttendanceLog.checkin_time) == today 
+        func.date(AttendanceLog.checkin_time) == today
     ).first()
 
     if last_log:
@@ -40,10 +60,11 @@ def check_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
         }
 
     new_log = AttendanceLog(student_id=student.id)
+
     try:
         db.add(new_log)
         db.commit()
-    except Exception as e:
+    except:
         db.rollback()
         raise HTTPException(status_code=500, detail="Lỗi lưu dữ liệu.")
 
@@ -56,7 +77,6 @@ def check_attendance(data: AttendanceRequest, db: Session = Depends(get_db)):
             "similarity": float(score)
         }
     }
-
 
 @router.get("/logs", response_model=AttendanceLogListResponse)
 def get_attendance_log(
@@ -88,3 +108,7 @@ def get_attendance_log(
         "page_size": page_size,
         "data": data
     }
+
+@router.get("/month", response_model = MonthlyAttendanceResponse)
+def monthly_attendance(month: int, year: int, db: Session = Depends(get_db)):
+    return get_monthly_attendance(db, month, year)
